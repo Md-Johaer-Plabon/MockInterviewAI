@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace MockInterviewAI.Service
 {
-    internal class SttService
+    internal class SpeechToTextService
     {
     }
 }

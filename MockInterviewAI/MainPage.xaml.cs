@@ -16,6 +16,11 @@ using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 using System.Collections.ObjectModel;
 using MockInterviewAI.ViewModel;
+using Windows.Media.Capture;
+using Windows.Media.MediaProperties;
+using System.Threading.Tasks;
+using Windows.UI.Core;
+using System.Diagnostics;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -28,9 +33,27 @@ namespace MockInterviewAI
     {
         public InterviewViewModel ViewModel { get; } = new InterviewViewModel();
 
+
         public MainPage()
         {
             this.InitializeComponent();
+            //mediaCapture = new MediaCapture();
+        }
+
+        private void InputTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            ViewModel.OnKeyDown(sender, e);
+        }
+
+        
+        private async void StartRecording(object sender, RoutedEventArgs e)
+        {
+            //await ViewModel.StartRecording();
+        }
+
+        private async void StopRecording(object sender, RoutedEventArgs e)
+        {
+            //await ViewModel.StopRecording();
         }
     }
 }

@@ -33,26 +33,32 @@
             <!-- Extra Information -->
             <TextBlock Text="Enter Additional Information:" />
             <TextBox Text="{Binding ExtraInfo, Mode=TwoWay}" PlaceholderText="Write about your interest or any other additional info..." Height="80" AcceptsReturn="True" />
-
+            <TextBox x:Name="InputTextBox" KeyDown="InputTextBox_KeyDown" Text="{Binding Answer, Mode=TwoWay}" PlaceholderText="Write your answer here" Height="80" AcceptsReturn="True" />
+            <Button Content="Submit" Command="{Binding SubmitCommand}" Background="Green" Foreground="White" />
+            
+            <Button Content="Start Recording" Click="StartRecording" />
+            
+            <Button Content="Stop Recording" Click="StopRecording" />
             <!-- Start Interview -->
-            <Button Content="Start Voice Interview" Command="{Binding StartInterviewCommand}" Background="Green" Foreground="White" />
+           <Button Content="Start Voice Interview" Command="{Binding StartInterviewCommand}" Background="Green" Foreground="White" />
         </StackPanel>
 
         <!-- Right Side: Voice Chat Panel -->
         <StackPanel Grid.Column="1" Padding="20">
             <TextBlock Text="Voice Chat" FontSize="20" FontWeight="Bold" />
 
-            <ScrollViewer Height="400">
+            <ScrollViewer Height="500">
                 <ListBox ItemsSource="{Binding ChatHistory}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding}" FontSize="16" Margin="5" />
+                            <StackPanel Orientation="Horizontal" MaxWidth="700">
+                                <TextBlock TextWrapping="Wrap" Text="{Binding}" FontSize="16" Margin="5" MaxWidth="650" />
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
             </ScrollViewer>
+
         </StackPanel>
 
         <!-- Bottom: Generate Feedback -->

@@ -16,6 +16,10 @@ using MockInterviewAI.Model;
 using MockInterviewAI.Data;
 using MockInterviewAI.Service;
 using Newtonsoft.Json;
+using Org.BouncyCastle.Asn1.Crmf;
+using Windows.UI.Xaml.Controls;
+using Windows.System;
+using Windows.UI.Xaml.Input;
 
 namespace MockInterviewAI.ViewModel
 {
@@ -28,16 +32,18 @@ namespace MockInterviewAI.ViewModel
 
         public ICommand UploadCVCommand { get; }
         public ICommand StartInterviewCommand { get; }
+        public ICommand SubmitCommand { get; }
         public ICommand SaveFeedbackCommand { get; }
 
         public ObservableCollection<string> ChatHistory { get; set; } = new ObservableCollection<string>();
 
+        private TaskCompletionSource<string> waitingTaskCompletion;
         public string CvFileName
         {
             get => _cvFileName;
             set { _cvFileName = value; OnPropertyChanged(); }
         }
-        private bool isUpdatedExtraInfo = false;
+        private bool isUpdatedExtraInfo { get; set; } = false;
         public string ExtraInfo
         {
             get => _extraInfo;
@@ -60,6 +66,7 @@ namespace MockInterviewAI.ViewModel
             UploadCVCommand = new RelayCommand(async () => await UploadCV());
             StartInterviewCommand = new RelayCommand(async () => await StartInterview());
             SaveFeedbackCommand = new RelayCommand(async () => await SaveFeedback());
+            SubmitCommand = new RelayCommand(async() => await Submit());
         }
 
         public async Task UploadCV()
@@ -90,33 +97,40 @@ namespace MockInterviewAI.ViewModel
             foreach (string val in cvText.Keys)
             {
                 List<string> list = cvText[val];
-                string obj = JsonConvert.SerializeObject(list);
+
+                string listVal = "";
+
+                foreach(string lst in list)
+                {
+                    listVal += lst;
+                }
 
                 if (val == "About")
                 {
-                    data.About = obj;
+                    data.About = listVal;
                 }
                 else if (val == "Skills")
                 {
-                    data.Skills = obj;
+                    data.Skills = listVal;
                 }
                 else if (val == "Projects")
                 {
-                    data.Projects = obj;
+                    data.Projects = listVal;
                 }
                 else if (val == "Technologies")
                 {
-                    data.Technologies = obj;
+                    data.Technologies = listVal;
                 }
                 else if (val == "Experience")
                 {
-                    data.Experience = obj;
+                    data.Experience = listVal;
                 }
             }
 
             if (!string.IsNullOrEmpty(ExtraInfo) && isUpdatedExtraInfo)
             {
                 data.AdditionalInfo = ExtraInfo;
+                isUpdatedExtraInfo = false;
             }
 
             await DbHelper.SaveUserData(data);
@@ -125,43 +139,167 @@ namespace MockInterviewAI.ViewModel
             ChatHistory.Clear();
         }
 
+        private string Make(string topic, string text)
+        {
+            try
+            {
+
+            }
+            catch
+            {
+
+            }
+
+            return topic + text;
+        }
+
+        private async Task<string> PrepareText()
+        {
+            
+            string text = "";
+            try
+            {
+                UserData data = new UserData();
+                data = await DbHelper.GetUserData(1);
+                text += Make("About:\n", data.About);
+                text += Make("Skills:\n", data.Skills);
+                text += Make("Technologies:\n", data.Technologies);
+                text += Make("Projects:\n", data.Projects);
+                text += Make("Experiences:\n", data.Experience);
+                text += Make("Additional Info:\n", data.AdditionalInfo);
+
+                
+            }
+            catch
+            {
+
+            }
+
+            return text;
+        }
+
+        private string review;
+
         public async Task StartInterview()
         {
-            if (cvText != null)
+            try
             {
-                await SaveData();
+                if (cvText != null)
+                {
+                    await SaveData();
+                }
+
+                UserData userData = await DbHelper.GetUserData(1); // Fetch data for user 1
+
+                if (userData == null)
+                {
+                    ChatHistory.Add("⚠️ Please try again.");
+                    return;
+                }
+
+                ChatHistory.Add("🎤 Interview Started...");
+                string info = await PrepareText();
+
+                List<string> questions = await AiService.GenerateQuestions(info);
+
+                //.Click += async (sender, e) => await StartLoop();
+                int idx = 1;
+
+                foreach (var question in questions)
+                {
+                    ChatHistory.Add("🤖 Bot: " + question);
+                    review += "Question " + idx++ + ": " + question+"\n";
+
+                    string userInput = await WaitForUserInput();
+
+                    //string response = await SpeechService.SpeechToText(); // User replies
+                    ChatHistory.Add("🧑‍💼 You: " + answer);
+                    review += answer;
+                    review += "\n";
+                    await Task.Delay(300);
+                    ChatHistory.Add("Loading...");
+                    await Task.Delay(2000);
+                    ChatHistory.Remove("Loading...");
+                
+                }
+
+                ChatHistory.Add("✅ Interview Ended. Click 'Generate Feedback Report'.");
+            }
+            catch
+            {
+
+            }
+        }
+
+        public void OnKeyDown(object sender, KeyRoutedEventArgs e)
+        {
+        }
+
+
+        private Task<string> WaitForUserInput()
+        {
+            if (waitingTaskCompletion == null || waitingTaskCompletion.Task.IsCompleted)
+            {
+                waitingTaskCompletion = new TaskCompletionSource<string>();
             }
 
-            UserData userData = await DbHelper.GetUserData(1); // Fetch data for user 1
-
-            if (userData == null)
-            {
-                ChatHistory.Add("⚠️ Please try again.");
-                return;
-            }
-
-            ChatHistory.Add("🎤 Interview Started...");
-            //string questions = await GeminiService.GetInterviewQuestions(userData.CvText, userData.AdditionalInfo);
-
-            //foreach (var question in questions.Split('\n'))
-            //{
-            //    ChatHistory.Add("🤖 Bot: " + question);
-            //    await SpeechService.TextToSpeech(question); // Bot speaks
-
-            //    string response = await SpeechService.SpeechToText(); // User replies
-            //    ChatHistory.Add("🧑‍💼 You: " + response);
-            //}
-
-            ChatHistory.Add("✅ Interview Ended. Click 'Generate Feedback Report'.");
+            return waitingTaskCompletion.Task;
         }
 
         // Save Feedback as PDF
         public async Task SaveFeedback()
         {
-            //string feedbackText = string.Join("\n", ChatHistory);
-            //string filePath = Path.Combine(ApplicationData.Current.LocalFolder.Path, "InterviewFeedback.pdf");
-            //ReportGenerator.CreatePDF(feedbackText, filePath);
-            //ChatHistory.Add("📄 Feedback saved as PDF!");
+            ChatHistory.Clear();
+            string feedbackText = string.Join("\n", ChatHistory);
+            ChatHistory.Add("Loading Your Feedback...");
+            string filePath = Path.Combine(ApplicationData.Current.LocalFolder.Path, "History.txt");
+            File.WriteAllText(filePath, review);
+            string val = await AiService.ReviewExam(review);
+
+            //val = val.Replace("\n", "<br><br>");
+            //val = val.Replace("\r", "<br><br>");
+            //val = val.Replace("*", "");
+            //val = val.Replace("\\", "");
+            //val = val.Replace("//", "");
+
+
+            filePath = Path.Combine(ApplicationData.Current.LocalFolder.Path, "Review.html");
+            File.WriteAllText(filePath, val);
+
+            ChatHistory.Clear();
+            ChatHistory.Add("📄 Feedback saved as PDF!");
+        }
+
+        public async Task Submit()
+        {
+            if (waitingTaskCompletion != null && !waitingTaskCompletion.Task.IsCompleted)
+            {
+                review += Answer;
+                //Answer = "";
+                review += "\n";
+                await Task.Delay(1); // Simulate async work
+                waitingTaskCompletion.SetResult(Answer);
+                //waitingTaskCompletion = null; // Reset only after completion
+            }
+        }
+
+        protected bool SetProperty<T>(ref T field, T newValue, [CallerMemberName] string propertyName = null)
+        {
+            if (!Equals(field, newValue))
+            {
+                field = newValue;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+                return true;
+            }
+
+            return false;
+        }
+
+        private string answer;
+
+        public string Answer { 
+            get => answer; 
+            set => SetProperty(ref answer, value); 
         }
     }
 }

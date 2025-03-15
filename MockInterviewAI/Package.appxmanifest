@@ -46,7 +46,6 @@
 
   <Capabilities>
     <Capability Name="internetClient" />
-    <rescap:Capability Name="broadFileSystemAccess" />
+    <DeviceCapability Name="microphone" />
   </Capabilities>
-
 </Package>
