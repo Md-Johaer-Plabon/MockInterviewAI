@@ -20,6 +20,11 @@ using Org.BouncyCastle.Asn1.Crmf;
 using Windows.UI.Xaml.Controls;
 using Windows.System;
 using Windows.UI.Xaml.Input;
+using System.Diagnostics;
+using Windows.Media.Capture;
+using Windows.Media.MediaProperties;
+using Windows.UI.Xaml;
+using Windows.Storage.Streams;
 
 namespace MockInterviewAI.ViewModel
 {
@@ -34,26 +39,35 @@ namespace MockInterviewAI.ViewModel
         public ICommand StartInterviewCommand { get; }
         public ICommand SubmitCommand { get; }
         public ICommand SaveFeedbackCommand { get; }
+        public ICommand StartRecordCommand { get; }
+        public ICommand StopRecordCommand { get; }
 
         public ObservableCollection<string> ChatHistory { get; set; } = new ObservableCollection<string>();
 
-        private TaskCompletionSource<string> waitingTaskCompletion;
+        private TaskCompletionSource<string> waitingTaskCompletion { get; set; }
         public string CvFileName
         {
             get => _cvFileName;
             set { _cvFileName = value; OnPropertyChanged(); }
         }
+
+        private string voiceAns;
         private bool isUpdatedExtraInfo { get; set; } = false;
         public string ExtraInfo
         {
             get => _extraInfo;
-            set 
+            set
             {
                 isUpdatedExtraInfo = true;
-                _extraInfo = value; 
-                OnPropertyChanged(); 
+                _extraInfo = value;
+                OnPropertyChanged();
             }
         }
+
+        private MediaCapture mediaCapture;
+        private bool isRecording = false;
+        private StorageFile audioFile;
+        private bool isInitialized;
 
         public event PropertyChangedEventHandler PropertyChanged;
         private void OnPropertyChanged([CallerMemberName] string propertyName = null)
@@ -66,7 +80,8 @@ namespace MockInterviewAI.ViewModel
             UploadCVCommand = new RelayCommand(async () => await UploadCV());
             StartInterviewCommand = new RelayCommand(async () => await StartInterview());
             SaveFeedbackCommand = new RelayCommand(async () => await SaveFeedback());
-            SubmitCommand = new RelayCommand(async() => await Submit());
+            StopRecordCommand = new RelayCommand(async () => await StopRecording());
+            StartRecordCommand = new RelayCommand(async () => await StartRecording());
         }
 
         public async Task UploadCV()
@@ -100,7 +115,7 @@ namespace MockInterviewAI.ViewModel
 
                 string listVal = "";
 
-                foreach(string lst in list)
+                foreach (string lst in list)
                 {
                     listVal += lst;
                 }
@@ -155,7 +170,7 @@ namespace MockInterviewAI.ViewModel
 
         private async Task<string> PrepareText()
         {
-            
+
             string text = "";
             try
             {
@@ -168,7 +183,7 @@ namespace MockInterviewAI.ViewModel
                 text += Make("Experiences:\n", data.Experience);
                 text += Make("Additional Info:\n", data.AdditionalInfo);
 
-                
+
             }
             catch
             {
@@ -208,19 +223,19 @@ namespace MockInterviewAI.ViewModel
                 foreach (var question in questions)
                 {
                     ChatHistory.Add("🤖 Bot: " + question);
-                    review += "Question " + idx++ + ": " + question+"\n";
+                    review += "Question " + idx++ + ": " + question + "\n";
 
                     string userInput = await WaitForUserInput();
-
+                    
                     //string response = await SpeechService.SpeechToText(); // User replies
-                    ChatHistory.Add("🧑‍💼 You: " + answer);
-                    review += answer;
+                    ChatHistory.Add("🧑‍💼 You: " + voiceAns);
+                    review += voiceAns;
                     review += "\n";
                     await Task.Delay(300);
                     ChatHistory.Add("Loading...");
                     await Task.Delay(2000);
                     ChatHistory.Remove("Loading...");
-                
+
                 }
 
                 ChatHistory.Add("✅ Interview Ended. Click 'Generate Feedback Report'.");
@@ -235,6 +250,113 @@ namespace MockInterviewAI.ViewModel
         {
         }
 
+        private async Task InitializeMediaCaptureAsync()
+        {
+            try
+            {
+                if (isInitialized) return;  // Prevent re-initialization
+
+                mediaCapture = new MediaCapture();
+                var settings = new MediaCaptureInitializationSettings
+                {
+                    StreamingCaptureMode = StreamingCaptureMode.Audio
+                };
+
+                await mediaCapture.InitializeAsync(settings);  // Initialize before using
+
+                isInitialized = true;
+                Debug.WriteLine("✅ MediaCapture Initialized Successfully");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ MediaCapture Initialization Error: {ex.Message}");
+                await new Windows.UI.Popups.MessageDialog($"MediaCapture Initialization Failed: {ex.Message}").ShowAsync();
+            }
+
+        }
+
+        public async Task StartRecording()
+        {
+            try
+            {
+                if (isRecording) return;  // Prevent multiple recordings
+
+                ChatHistory.Add("Recording...");
+                // Ensure MediaCapture is initialized
+                if (mediaCapture == null)
+                {
+                    await InitializeMediaCaptureAsync();
+                }
+
+                // Create a new file for recording
+                //audioFile = await KnownFolders.MusicLibrary.CreateFileAsync("recordedAudio.mp3", CreationCollisionOption.GenerateUniqueName);
+                audioFile = await ApplicationData.Current.LocalFolder.CreateFileAsync("recordedAudio.mp3", CreationCollisionOption.GenerateUniqueName);
+
+                // Set up encoding profile
+                MediaEncodingProfile encodingProfile = MediaEncodingProfile.CreateMp3(AudioEncodingQuality.Auto);
+
+                // Start recording
+                await mediaCapture.StartRecordToStorageFileAsync(encodingProfile, audioFile);
+                isRecording = true;
+            }
+            catch (Exception ex)
+            {
+                await new Windows.UI.Popups.MessageDialog($"Error: {ex.Message}").ShowAsync();
+            }
+        }
+        public async Task StopRecording()
+        {
+            try
+            {
+                if (!isRecording) return;
+
+                ChatHistory.Remove("Recording...");
+                await mediaCapture.StopRecordAsync();
+                isRecording = false;
+
+                await new Windows.UI.Popups.MessageDialog($"Recording saved: {audioFile.Path}").ShowAsync();
+
+                string propmpt = "Transcribe the exact voice to text only.";
+                string base64 = await AudToBase64(audioFile);
+
+                ChatHistory.Add("Loading...");
+                voiceAns = await AiService.Transcribe(propmpt, base64, "audio/wav");
+
+                ChatHistory.Remove("Loading...");
+                if (waitingTaskCompletion != null && !waitingTaskCompletion.Task.IsCompleted)
+                {
+                    review += voiceAns;
+                    //Answer = "";
+                    review += "\n";
+                    await Task.Delay(1); // Simulate async work
+                    waitingTaskCompletion.SetResult("");
+                    //waitingTaskCompletion = null; // Reset only after completion
+                }
+            }
+            catch (Exception ex)
+            {
+                await new Windows.UI.Popups.MessageDialog($"Error: {ex.Message}").ShowAsync();
+            }
+            finally
+            {
+
+            }
+        }
+        private async Task<string> AudToBase64(StorageFile file)
+        {
+            if (file == null) return null;
+
+            using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.Read))
+            {
+                using (DataReader reader = new DataReader(stream))
+                {
+                    byte[] bytes = new byte[stream.Size];
+                    await reader.LoadAsync((uint)stream.Size);
+                    reader.ReadBytes(bytes);
+                    return Convert.ToBase64String(bytes);
+                }
+            }
+        }
 
         private Task<string> WaitForUserInput()
         {
@@ -272,15 +394,7 @@ namespace MockInterviewAI.ViewModel
 
         public async Task Submit()
         {
-            if (waitingTaskCompletion != null && !waitingTaskCompletion.Task.IsCompleted)
-            {
-                review += Answer;
-                //Answer = "";
-                review += "\n";
-                await Task.Delay(1); // Simulate async work
-                waitingTaskCompletion.SetResult(Answer);
-                //waitingTaskCompletion = null; // Reset only after completion
-            }
+
         }
 
         protected bool SetProperty<T>(ref T field, T newValue, [CallerMemberName] string propertyName = null)
@@ -297,9 +411,10 @@ namespace MockInterviewAI.ViewModel
 
         private string answer;
 
-        public string Answer { 
-            get => answer; 
-            set => SetProperty(ref answer, value); 
+        public string Answer
+        {
+            get => answer;
+            set => SetProperty(ref answer, value);
         }
     }
 }

@@ -44,16 +44,5 @@ namespace MockInterviewAI
         {
             ViewModel.OnKeyDown(sender, e);
         }
-
-        
-        private async void StartRecording(object sender, RoutedEventArgs e)
-        {
-            //await ViewModel.StartRecording();
-        }
-
-        private async void StopRecording(object sender, RoutedEventArgs e)
-        {
-            //await ViewModel.StopRecording();
-        }
     }
 }

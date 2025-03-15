@@ -35,10 +35,10 @@
             <TextBox Text="{Binding ExtraInfo, Mode=TwoWay}" PlaceholderText="Write about your interest or any other additional info..." Height="80" AcceptsReturn="True" />
             <TextBox x:Name="InputTextBox" KeyDown="InputTextBox_KeyDown" Text="{Binding Answer, Mode=TwoWay}" PlaceholderText="Write your answer here" Height="80" AcceptsReturn="True" />
             <Button Content="Submit" Command="{Binding SubmitCommand}" Background="Green" Foreground="White" />
-            
-            <Button Content="Start Recording" Click="StartRecording" />
-            
-            <Button Content="Stop Recording" Click="StopRecording" />
+
+            <Button Content="Start Recording" Command="{Binding StartRecordCommand}" />
+
+            <Button Content="Stop Recording" Command="{Binding StopRecordCommand}"/>
             <!-- Start Interview -->
            <Button Content="Start Voice Interview" Command="{Binding StartInterviewCommand}" Background="Green" Foreground="White" />
         </StackPanel>
