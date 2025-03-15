@@ -314,8 +314,7 @@ namespace MockInterviewAI.ViewModel
                 await mediaCapture.StopRecordAsync();
                 isRecording = false;
 
-                await new Windows.UI.Popups.MessageDialog($"Recording saved: {audioFile.Path}").ShowAsync();
-
+          
                 string propmpt = "Transcribe the exact voice to text only.";
                 string base64 = await AudToBase64(audioFile);
 
@@ -339,7 +338,11 @@ namespace MockInterviewAI.ViewModel
             }
             finally
             {
-
+                FileInfo aud = new FileInfo(audioFile.Path);
+                if (aud.Exists)
+                {
+                    aud.Delete();
+                }
             }
         }
         private async Task<string> AudToBase64(StorageFile file)
