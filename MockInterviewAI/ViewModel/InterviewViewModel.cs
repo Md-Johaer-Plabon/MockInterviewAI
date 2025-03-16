@@ -25,6 +25,7 @@ using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
 using Windows.UI.Xaml;
 using Windows.Storage.Streams;
+using Windows.Media.Playback;
 
 namespace MockInterviewAI.ViewModel
 {
@@ -41,6 +42,7 @@ namespace MockInterviewAI.ViewModel
         public ICommand SaveFeedbackCommand { get; }
         public ICommand StartRecordCommand { get; }
         public ICommand StopRecordCommand { get; }
+        public ICommand ClearChatCommand { get; }
 
         public ObservableCollection<string> ChatHistory { get; set; } = new ObservableCollection<string>();
 
@@ -82,6 +84,13 @@ namespace MockInterviewAI.ViewModel
             SaveFeedbackCommand = new RelayCommand(async () => await SaveFeedback());
             StopRecordCommand = new RelayCommand(async () => await StopRecording());
             StartRecordCommand = new RelayCommand(async () => await StartRecording());
+            ClearChatCommand = new RelayCommand(async () => await ClearChat());
+        }
+
+        private async Task ClearChat()
+        {
+            ChatHistory.Clear();
+            await Task.Delay(10);
         }
 
         public async Task UploadCV()
@@ -193,7 +202,63 @@ namespace MockInterviewAI.ViewModel
             return text;
         }
 
-        private string review;
+        private string review { get; set; }
+
+        public async void PlayAudio(string fileName = "audio.mp3")
+        {
+            try
+            {
+                // Get the local storage folder
+                StorageFolder localFolder = ApplicationData.Current.LocalFolder;
+
+                // Get the saved audio file
+                StorageFile audioFile = await localFolder.GetFileAsync(fileName);
+
+                // Create a MediaPlayer
+                MediaPlayer mediaPlayer = new MediaPlayer();
+                mediaPlayer.Source = Windows.Media.Core.MediaSource.CreateFromStorageFile(audioFile);
+
+                // Play the audio
+                mediaPlayer.Play();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error playing audio: " + ex.Message);
+            }
+        }
+        public async Task<string> SaveBase64AudioToFileAsync(string base64String, string fileName = "audio.mp3")
+        {
+            try
+            {
+                base64String = base64String.Trim();  // Remove leading/trailing spaces
+                base64String = base64String.Replace("\n", "").Replace("\r", "");  // Remove newlines
+                while (base64String.Length % 4 != 0)
+                {
+                    base64String += "=";
+                }
+
+                // Convert Base64 string to byte array
+                byte[] audioBytes = Convert.FromBase64String(base64String);
+
+                // Get the local storage folder
+                StorageFolder localFolder = ApplicationData.Current.LocalFolder;
+
+                // Create or overwrite the file
+                StorageFile audioFile = await localFolder.CreateFileAsync(fileName, CreationCollisionOption.ReplaceExisting);
+
+                // Write the bytes to the file
+                await FileIO.WriteBytesAsync(audioFile, audioBytes);
+
+                // Return file path
+                return audioFile.Path;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error saving audio file: " + ex.Message);
+                return null;
+            }
+        }
+
 
         public async Task StartInterview()
         {
@@ -212,7 +277,7 @@ namespace MockInterviewAI.ViewModel
                     return;
                 }
 
-                ChatHistory.Add("🎤 Interview Started...");
+                ChatHistory.Add("🎤 Interview Starting...");
                 string info = await PrepareText();
 
                 List<string> questions = await AiService.GenerateQuestions(info);
@@ -222,6 +287,11 @@ namespace MockInterviewAI.ViewModel
 
                 foreach (var question in questions)
                 {
+                    //ChatHistory.Remove("Loading...");
+                    //string audQuestions = await AiService.GenerateAudio(question);
+                    //await SaveBase64AudioToFileAsync(audQuestions);
+                    //PlayAudio();
+                    ChatHistory.RemoveAt(ChatHistory.Count - 1);
                     ChatHistory.Add("🤖 Bot: " + question);
                     review += "Question " + idx++ + ": " + question + "\n";
 
@@ -229,15 +299,15 @@ namespace MockInterviewAI.ViewModel
                     
                     //string response = await SpeechService.SpeechToText(); // User replies
                     ChatHistory.Add("🧑‍💼 You: " + voiceAns);
-                    review += voiceAns;
+                    review += $"Answer: { voiceAns}";
                     review += "\n";
                     await Task.Delay(300);
                     ChatHistory.Add("Loading...");
-                    await Task.Delay(2000);
-                    ChatHistory.Remove("Loading...");
+                    await Task.Delay(1000);
 
                 }
 
+                ChatHistory.Remove("Loading...");
                 ChatHistory.Add("✅ Interview Ended. Click 'Generate Feedback Report'.");
             }
             catch
@@ -290,7 +360,7 @@ namespace MockInterviewAI.ViewModel
 
                 // Create a new file for recording
                 //audioFile = await KnownFolders.MusicLibrary.CreateFileAsync("recordedAudio.mp3", CreationCollisionOption.GenerateUniqueName);
-                audioFile = await ApplicationData.Current.LocalFolder.CreateFileAsync("recordedAudio.mp3", CreationCollisionOption.GenerateUniqueName);
+                audioFile = await ApplicationData.Current.LocalCacheFolder.CreateFileAsync("recordedAudio.mp3", CreationCollisionOption.GenerateUniqueName);
 
                 // Set up encoding profile
                 MediaEncodingProfile encodingProfile = MediaEncodingProfile.CreateMp3(AudioEncodingQuality.Auto);
@@ -324,12 +394,7 @@ namespace MockInterviewAI.ViewModel
                 ChatHistory.Remove("Loading...");
                 if (waitingTaskCompletion != null && !waitingTaskCompletion.Task.IsCompleted)
                 {
-                    review += voiceAns;
-                    //Answer = "";
-                    review += "\n";
-                    await Task.Delay(1); // Simulate async work
                     waitingTaskCompletion.SetResult("");
-                    //waitingTaskCompletion = null; // Reset only after completion
                 }
             }
             catch (Exception ex)
@@ -371,33 +436,28 @@ namespace MockInterviewAI.ViewModel
             return waitingTaskCompletion.Task;
         }
 
+        public async Task OpenFolder(string path)
+        {
+            StorageFile folder = await StorageFile.GetFileFromPathAsync(path);
+            await Launcher.LaunchFileAsync(folder);
+        }
+
         // Save Feedback as PDF
         public async Task SaveFeedback()
         {
             ChatHistory.Clear();
-            string feedbackText = string.Join("\n", ChatHistory);
             ChatHistory.Add("Loading Your Feedback...");
-            string filePath = Path.Combine(ApplicationData.Current.LocalFolder.Path, "History.txt");
+            string filePath = Path.Combine(ApplicationData.Current.LocalCacheFolder.Path, "History.txt");
             File.WriteAllText(filePath, review);
             string val = await AiService.ReviewExam(review);
 
-            //val = val.Replace("\n", "<br><br>");
-            //val = val.Replace("\r", "<br><br>");
-            //val = val.Replace("*", "");
-            //val = val.Replace("\\", "");
-            //val = val.Replace("//", "");
 
-
-            filePath = Path.Combine(ApplicationData.Current.LocalFolder.Path, "Review.html");
+            filePath = Path.Combine(ApplicationData.Current.LocalCacheFolder.Path, "Review.html");
             File.WriteAllText(filePath, val);
 
             ChatHistory.Clear();
             ChatHistory.Add("📄 Feedback saved as PDF!");
-        }
-
-        public async Task Submit()
-        {
-
+            await OpenFolder(filePath);
         }
 
         protected bool SetProperty<T>(ref T field, T newValue, [CallerMemberName] string propertyName = null)

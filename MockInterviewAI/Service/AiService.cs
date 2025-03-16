@@ -1,4 +1,5 @@
 ﻿using iText.Forms.Form.Element;
+using iText.Layout.Element;
 using MockInterviewAI.Model;
 using MockInterviewAI.Utils;
 using Newtonsoft.Json;
@@ -129,7 +130,48 @@ namespace MockInterviewAI.Service
             }
         }
 
+        public static async Task<string> GenerateAudio(string que)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                string text = "Generate base64 string of audio file of the following question.\n" +
+                              "You only have to share base64 string of audio file. I will handle the conversion from base64" +
+                              "to audio file. I will create the audio file locally.\n" +
+                              "Question:";
+
+                    text += que;
+                    text += "\r\n";
+
+                string requestPayload = GetRequestBody(text, "", "");
+
+                HttpContent content = new StringContent(requestPayload, Encoding.UTF8, "application/json");
+
+                HttpResponseMessage response = await client.PostAsync(GeminiEndpoint, content);
+                if (response.IsSuccessStatusCode)
+                {
+                    string responseJson = await response.Content.ReadAsStringAsync();
+
+                    dynamic result = JsonConvert.DeserializeObject(responseJson);
+
+                    string responseArray = result?.candidates[0]?.content?.parts[0].text;
+                    responseArray = responseArray.Replace("```json", "");
+                    responseArray = responseArray.Replace("```", "");
+
+                    isAudioList = true;
+                    //ParseGeminiResponse(responseArray);
+                    //return AudQuestions;
+                    return responseArray;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+        }
+
         private static List<string> Questions = new List<string>();
+        private static bool isAudioList;
+        private static List<string> AudQuestions;
 
         public static async Task<List<string>> GenerateQuestions(string cvText)
         {
@@ -266,6 +308,10 @@ namespace MockInterviewAI.Service
                         keyValueStore[parentKey] = new List<string>();
 
                     keyValueStore[parentKey].Add(token.ToString());
+                }
+                if (isAudioList)
+                {
+                    AudQuestions.Add(token.ToString());
                 }
                 else
                 {

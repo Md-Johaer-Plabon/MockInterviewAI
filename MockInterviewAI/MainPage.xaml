@@ -14,40 +14,33 @@
     
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-        <!-- Layout -->
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="2*" />
-            <!-- Left: User Input -->
             <ColumnDefinition Width="3*" />
-            <!-- Right: Voice Chat -->
         </Grid.ColumnDefinitions>
 
-        <!-- Left Side: User Inputs -->
         <StackPanel Grid.Column="0" Padding="20" Spacing="20">
             <TextBlock Text="AI Interview Chatbot" FontSize="22" FontWeight="Bold" />
-
-            <!-- Upload CV -->
             <Button Content="Upload CV (PDF)" Command="{Binding UploadCVCommand}" />
             <TextBlock Text="{Binding CvFileName}" FontSize="14" />
 
-            <!-- Extra Information -->
-            <TextBlock Text="Enter Additional Information:" />
             <TextBox Text="{Binding ExtraInfo, Mode=TwoWay}" PlaceholderText="Write about your interest or any other additional info..." Height="80" AcceptsReturn="True" />
             <TextBox x:Name="InputTextBox" KeyDown="InputTextBox_KeyDown" Text="{Binding Answer, Mode=TwoWay}" PlaceholderText="Write your answer here" Height="80" AcceptsReturn="True" />
-            <Button Content="Submit" Command="{Binding SubmitCommand}" Background="Green" Foreground="White" />
-
+            
+            <Button Content="Start Interview" Command="{Binding StartInterviewCommand}" Background="Green" Foreground="White" />
             <Button Content="Start Recording" Command="{Binding StartRecordCommand}" />
-
             <Button Content="Stop Recording" Command="{Binding StopRecordCommand}"/>
-            <!-- Start Interview -->
-           <Button Content="Start Voice Interview" Command="{Binding StartInterviewCommand}" Background="Green" Foreground="White" />
+            <Button Content="Clear Chat" Command="{Binding ClearChatCommand}" />
+
+            <Button Content="Generate Feedback Report"
+                Command="{Binding SaveFeedbackCommand}"
+                Background="Blue" Foreground="White"/>
         </StackPanel>
 
-        <!-- Right Side: Voice Chat Panel -->
         <StackPanel Grid.Column="1" Padding="20">
-            <TextBlock Text="Voice Chat" FontSize="20" FontWeight="Bold" />
+            <TextBlock Text="Chat History" FontSize="20" FontWeight="Bold" />
 
-            <ScrollViewer Height="500">
+            <ScrollViewer Height="580">
                 <ListBox ItemsSource="{Binding ChatHistory}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -58,16 +51,7 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
             </ScrollViewer>
-
         </StackPanel>
 
-        <!-- Bottom: Generate Feedback -->
-        <Button Content="Generate Feedback Report"
-                Grid.ColumnSpan="2"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
-                Margin="0,0,0,20"
-                Command="{Binding SaveFeedbackCommand}"
-                Background="Blue" Foreground="White"/>
     </Grid>
 </Page>
