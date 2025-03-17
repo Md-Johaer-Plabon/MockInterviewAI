@@ -129,8 +129,11 @@
     <Compile Include="Service\AiService.cs" />
     <Compile Include="Service\SpeechToTextService.cs" />
     <Compile Include="Service\TextToSpeechService.cs" />
+    <Compile Include="Utils\AppUtil.cs" />
     <Compile Include="Utils\PdfParser.cs" />
     <Compile Include="ViewModel\InterviewViewModel.cs" />
+    <Compile Include="ViewModel\Properties.cs" />
+    <Compile Include="ViewModel\RelayCommand.cs" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest">

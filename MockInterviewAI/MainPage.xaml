@@ -25,7 +25,7 @@
             <TextBlock Text="{Binding CvFileName}" FontSize="14" />
 
             <TextBox Text="{Binding ExtraInfo, Mode=TwoWay}" PlaceholderText="Write about your interest or any other additional info..." Height="80" AcceptsReturn="True" />
-            <TextBox x:Name="InputTextBox" KeyDown="InputTextBox_KeyDown" Text="{Binding Answer, Mode=TwoWay}" PlaceholderText="Write your answer here" Height="80" AcceptsReturn="True" />
+            <TextBox x:Name="InputTextBox" Text="{Binding Answer, Mode=TwoWay}" PlaceholderText="Write your answer here" Height="80" AcceptsReturn="True" />
             
             <Button Content="Start Interview" Command="{Binding StartInterviewCommand}" Background="Green" Foreground="White" />
             <Button Content="Start Recording" Command="{Binding StartRecordCommand}" />

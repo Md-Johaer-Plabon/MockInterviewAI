@@ -1,29 +1,25 @@
-﻿using iText.Forms.Form.Element;
-using iText.Layout.Element;
-using MockInterviewAI.Model;
-using MockInterviewAI.Utils;
+﻿using MockInterviewAI.Utils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Windows.Storage;
-using Windows.Storage.Streams;
 
 namespace MockInterviewAI.Service
 {
     public class AiService
     {
         private static readonly string ApiKey = "AIzaSyALAScAimaiBrHWCtCuQ1n-G7vXEW-xgLo";
-        //private static readonly string ApiKey = "AIzaSyCxATOqKYc7pAYO8Zx4gylesJ9487R0zdI";
-        //private static readonly string GeminiEndpoint = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=" + ApiKey;
         private static readonly string GeminiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + ApiKey;
         private static Dictionary<string, List<string>> keyValueStore = new Dictionary<string, List<string>>();
-
+        private static List<string> Questions = new List<string>();
+        private static bool isAudioList;
+        private static List<string> AudQuestions;
+        private static bool isQuestionText { get; set; } = false;
 
         public static async Task<Dictionary<string, List<string>>> ExtractCvDetailsAsJsonFromPdf(StorageFile file)
         {
@@ -119,9 +115,7 @@ namespace MockInterviewAI.Service
 
                     keyValueStore.Clear();
                     isQuestionText = false;
-                    //ParseGeminiResponse(responseArray);
                     return responseArray;
-                    //return ParseReview(responseArray);
                 }
                 else
                 {
@@ -158,8 +152,6 @@ namespace MockInterviewAI.Service
                     responseArray = responseArray.Replace("```", "");
 
                     isAudioList = true;
-                    //ParseGeminiResponse(responseArray);
-                    //return AudQuestions;
                     return responseArray;
                 }
                 else
@@ -168,10 +160,6 @@ namespace MockInterviewAI.Service
                 }
             }
         }
-
-        private static List<string> Questions = new List<string>();
-        private static bool isAudioList;
-        private static List<string> AudQuestions;
 
         public static async Task<List<string>> GenerateQuestions(string cvText)
         {
@@ -277,8 +265,6 @@ namespace MockInterviewAI.Service
             return json;
         }
 
-        private static bool isQuestionText { get; set; } = false;
-
         static void ExtractValues(JToken token, string parentKey = "")
         {
             if (token is JObject obj)
@@ -301,7 +287,6 @@ namespace MockInterviewAI.Service
             }
             else
             {
-                // Store values in the dictionary
                 if (!isQuestionText)
                 {
                     if (!keyValueStore.ContainsKey(parentKey))
