@@ -26,9 +26,14 @@ namespace MockInterviewAI.Data
             await _database.InsertOrReplaceAsync(userData);
         }
 
-        public static async Task<UserData> GetUserData(int userId)
+        public static async Task<UserData> GetUserData()
         {
-            return await _database.Table<UserData>().Where(x => x.UserId == userId).FirstOrDefaultAsync();
+            return await _database.Table<UserData>().Where(x => x.UserId == 1).FirstOrDefaultAsync();
+        }
+
+        public static async Task DeleteEntity()
+        {
+            await _database.Table<UserData>().Where(x => x.UserId == 1).DeleteAsync();
         }
     }
 }

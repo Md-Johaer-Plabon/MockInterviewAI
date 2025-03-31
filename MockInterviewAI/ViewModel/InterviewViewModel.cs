@@ -5,6 +5,7 @@ using MockInterviewAI.Utils;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using Windows.Storage;
@@ -14,74 +15,96 @@ namespace MockInterviewAI.ViewModel
 {
     public partial class InterviewViewModel : INotifyPropertyChanged
     {
+        private List<string> questions;
+        private bool _forceEnd = false;
+
         public async Task UploadCV()
         {
-            FileOpenPicker picker = new FileOpenPicker();
-            picker.FileTypeFilter.Add(".pdf");
-            StorageFile file = await picker.PickSingleFileAsync();
-
-            if (file != null)
+            try
             {
-                cvFilePath = file.Path;
-                CvFileName = file.Name;
-                ChatHistory.Add("Uploading...");
+                FileOpenPicker picker = new FileOpenPicker();
+                picker.FileTypeFilter.Add(".pdf");
+                StorageFile file = await picker.PickSingleFileAsync();
 
-                cvText = await AiService.ExtractCvDetailsAsJsonFromPdf(file);
+                if (file != null)
+                {
+                    cvFilePath = file.Path;
+                    CvFileName = file.Name;
+                    ChatHistory.Add("Uploading...");
 
-                ChatHistory.Clear();
-                ChatHistory.Add("Upload Completed!");
+                    cvText = await AiService.ExtractCvDetailsAsJsonFromPdf(file);
+
+                    ChatHistory.Clear();
+                    ChatHistory.Add("Upload Completed!");
+
+                    await SaveData();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Error in Uploading CV: " + ex.Message);
             }
         }
 
         private async Task SaveData()
         {
-            ChatHistory.Clear();
-            ChatHistory.Add("Loading...");
-
-            UserData data = new UserData();
-            foreach (string val in cvText.Keys)
+            try
             {
-                List<string> list = cvText[val];
+                ChatHistory.Clear();
+                ChatHistory.Add("Loading...");
 
-                string listVal = "";
+                UserData data = new UserData();
+                foreach (string val in cvText.Keys)
+                {
+                    List<string> list = cvText[val];
 
-                foreach (string lst in list)
-                {
-                    listVal += lst;
+                    string listVal = "";
+
+                    foreach (string lst in list)
+                    {
+                        listVal += lst;
+                    }
+
+                    if (val == "About")
+                    {
+                        data.About = listVal;
+                    }
+                    else if (val == "Skills")
+                    {
+                        data.Skills = listVal;
+                    }
+                    else if (val == "Projects")
+                    {
+                        data.Projects = listVal;
+                    }
+                    else if (val == "Technologies")
+                    {
+                        data.Technologies = listVal;
+                    }
+                    else if (val == "Experience")
+                    {
+                        data.Experience = listVal;
+                    }
                 }
 
-                if (val == "About")
+                if (!string.IsNullOrEmpty(ExtraInfo) && isUpdatedExtraInfo)
                 {
-                    data.About = listVal;
+                    data.AdditionalInfo = ExtraInfo;
+                    isUpdatedExtraInfo = false;
                 }
-                else if (val == "Skills")
-                {
-                    data.Skills = listVal;
-                }
-                else if (val == "Projects")
-                {
-                    data.Projects = listVal;
-                }
-                else if (val == "Technologies")
-                {
-                    data.Technologies = listVal;
-                }
-                else if (val == "Experience")
-                {
-                    data.Experience = listVal;
-                }
+
+                await DbHelper.SaveUserData(data);
             }
-
-            if (!string.IsNullOrEmpty(ExtraInfo) && isUpdatedExtraInfo)
+            catch (Exception ex)
             {
-                data.AdditionalInfo = ExtraInfo;
-                isUpdatedExtraInfo = false;
+                Debug.WriteLine("Error in SaveData: " + ex.Message);
             }
-
-            await DbHelper.SaveUserData(data);
-            cvText.Clear();
-            cvText = null;
-            ChatHistory.Clear();
+            finally
+            {
+                cvText.Clear();
+                cvText = null;
+                ChatHistory.Clear();
+            }
         }
 
         private string Make(string topic, string text)
@@ -95,7 +118,7 @@ namespace MockInterviewAI.ViewModel
             try
             {
                 UserData data = new UserData();
-                data = await DbHelper.GetUserData(1);
+                data = await DbHelper.GetUserData();
 
                 text += Make("About:\n", data.About);
                 text += Make("Skills:\n", data.Skills);
@@ -104,9 +127,9 @@ namespace MockInterviewAI.ViewModel
                 text += Make("Experiences:\n", data.Experience);
                 text += Make("Additional Info:\n", data.AdditionalInfo);
             }
-            catch 
+            catch (Exception ex)
             {
-                //
+                Debug.WriteLine("Error in PrepareText: " + ex.Message);
             }
 
             return text;
@@ -116,23 +139,41 @@ namespace MockInterviewAI.ViewModel
         {
             try
             {
-                if (cvText != null)
+                if (waitingTaskCompletion != null && !waitingTaskCompletion.Task.IsCompleted)
                 {
-                    await SaveData();
-                }
-
-                UserData userData = await DbHelper.GetUserData(1);
-
-                if (userData == null)
-                {
-                    ChatHistory.Add("⚠️ Please try again.");
+                    ChatHistory.Add("⚠️ Illegal Move! Plese answer the question.");
                     return;
                 }
 
+                UserData userData = await DbHelper.GetUserData();
+
+                if (userData == null)
+                {
+                    if (!string.IsNullOrEmpty(ExtraInfo))
+                    {
+                        userData = new UserData();
+                        userData.AdditionalInfo = ExtraInfo;
+                        isUpdatedExtraInfo = false;
+                        await DbHelper.SaveUserData(userData);
+                    }
+                    else
+                    {
+                        ChatHistory.Add("⚠️ No records found. Please try again.");
+                        return;
+                    }
+                }
+
+                if (isUpdatedExtraInfo)
+                {
+                    userData.AdditionalInfo = ExtraInfo;
+                    await DbHelper.SaveUserData(userData);
+                }
+
+                ChatHistory.Clear();
                 ChatHistory.Add("🎤 Interview Starting...");
                 string info = await PrepareText();
 
-                List<string> questions = await AiService.GenerateQuestions(info);
+                questions = await AiService.GenerateQuestions(info, QuestionLimit, PrefLanguage);
 
                 int idx = 1;
 
@@ -144,6 +185,11 @@ namespace MockInterviewAI.ViewModel
 
                     string userInput = await WaitForUserInput();
                     
+                    if (_forceEnd)
+                    {
+                        break;
+                    }
+
                     ChatHistory.Add("🧑‍💼 You: " + voiceAns);
                     review += $"Answer: { voiceAns}";
                     review += "\n";
@@ -154,24 +200,33 @@ namespace MockInterviewAI.ViewModel
                 }
 
                 ChatHistory.Remove("Loading...");
-                ChatHistory.Add("✅ Interview Ended. Click 'Generate Feedback Report'.");
+                ChatHistory.Add("✅ Interview Ended. " + (!_forceEnd? "Click 'Generate Feedback Report'.": ""));
             }
-            catch
+            catch (Exception ex)
             {
-
+                await new Windows.UI.Popups.MessageDialog($"Error in StartInterview: {ex.Message}").ShowAsync();
             }
+
+            questions.Clear();
         }
 
         public async Task StartRecording()
         {
             try
             {
+                if (questions == null || questions.Count == 0)
+                {
+                    ChatHistory.Add("⚠️ Please confirm the interview has been started properly.");
+                    return;
+                }
+
+                ChatHistory.Remove("⚠️ Start the recording first.");
                 ChatHistory.Add("Recording...");
                 await SpeechToTextService.StartRecording();
             }
-            catch
+            catch (Exception ex)
             {
-
+                await new Windows.UI.Popups.MessageDialog($"Error in StartRecording: {ex.Message}").ShowAsync();
             }
         }
 
@@ -179,6 +234,12 @@ namespace MockInterviewAI.ViewModel
         {
             try
             {
+                if (!ChatHistory.Contains("Recording..."))
+                {
+                    ChatHistory.Add("⚠️ Start the recording first.");
+                    return;
+                }
+
                 ChatHistory.Remove("Recording...");
                 await SpeechToTextService.StopRecording();
 
@@ -196,10 +257,13 @@ namespace MockInterviewAI.ViewModel
             }
             finally
             {
-                FileInfo aud = new FileInfo(SpeechToTextService.audioFile.Path);
-                if (aud.Exists)
+                if (SpeechToTextService.audioFile != null)
                 {
-                    aud.Delete();
+                    FileInfo aud = new FileInfo(SpeechToTextService.audioFile.Path);
+                    if (aud.Exists)
+                    {
+                        aud.Delete();
+                    }
                 }
             }   
         }
@@ -216,24 +280,58 @@ namespace MockInterviewAI.ViewModel
 
         public async Task SaveFeedback()
         {
-            ChatHistory.Clear();
-            ChatHistory.Add("Loading Your Feedback...");
-            string filePath = Path.Combine(ApplicationData.Current.LocalCacheFolder.Path, "History.txt");
-            File.WriteAllText(filePath, review);
-            string val = await AiService.ReviewExam(review);
+            try
+            {
+                if (string.IsNullOrEmpty(review))
+                {
+                    ChatHistory.Clear();
+                    ChatHistory.Add("⚠️ No Data Found.");
+                    return;
+                }
 
-            filePath = Path.Combine(ApplicationData.Current.LocalCacheFolder.Path, "Review.html");
-            File.WriteAllText(filePath, val);
+                ChatHistory.Clear();
+                ChatHistory.Add("Loading Your Feedback...");
 
-            ChatHistory.Clear();
-            ChatHistory.Add("📄 Feedback saved as PDF!");
-            await AppUtil.OpenFolder(filePath);
+                IsProgressRingActive = true;
+
+                string filePath = Path.Combine(ApplicationData.Current.LocalCacheFolder.Path, "History.txt");
+                File.WriteAllText(filePath, review);
+                string val = await AiService.ReviewExam(review);
+
+                filePath = Path.Combine(ApplicationData.Current.LocalCacheFolder.Path, "Review.html");
+                File.WriteAllText(filePath, val);
+
+                ChatHistory.Clear();
+                ChatHistory.Add("📄 Feedback saved as PDF!");
+                await AppUtil.OpenFolder(filePath);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Error in SaveFeedBack: " + ex);
+            }
+            finally
+            {
+                IsProgressRingActive = false;
+                review = "";
+            }
         }
 
         private async Task ClearChat()
         {
             ChatHistory.Clear();
+            review = "";
             await Task.Delay(10);
+        }
+
+        private async Task ResetAll()
+        {
+            await ClearChat();
+            await DbHelper.DeleteEntity();
+            if (waitingTaskCompletion != null && !waitingTaskCompletion.Task.IsCompleted)
+            {
+                _forceEnd = true;
+                waitingTaskCompletion.SetResult("");
+            }
         }
     }
 }

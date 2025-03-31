@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Streams;
@@ -27,6 +29,31 @@ namespace MockInterviewAI.Utils
                     reader.ReadBytes(bytes);
                     return Convert.ToBase64String(bytes);
                 }
+            }
+        }
+
+        public static void TraverseJson(JsonElement jsonElement)
+        {
+            try
+            {
+                if (jsonElement.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var property in jsonElement.EnumerateObject())
+                    {
+                        TraverseJson(property.Value);
+                    }
+                }
+                else if (jsonElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in jsonElement.EnumerateArray())
+                    {
+                        TraverseJson(item);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error in TraverseJson: {ex.Message}");
             }
         }
     }

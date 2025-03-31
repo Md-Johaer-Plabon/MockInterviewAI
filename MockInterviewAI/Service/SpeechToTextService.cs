@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using System.IO;
 using System.Threading.Tasks;
 using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
@@ -73,7 +72,7 @@ namespace MockInterviewAI.Service
             }
             catch (Exception ex)
             {
-                await new Windows.UI.Popups.MessageDialog($"Error: {ex.Message}").ShowAsync();
+                await new Windows.UI.Popups.MessageDialog($"Error in StopRecording: {ex.Message}").ShowAsync();
             }
         }
     }

@@ -11,7 +11,7 @@
     <Page.DataContext>
         <local:InterviewViewModel/>
     </Page.DataContext>
-    
+
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
         <Grid.ColumnDefinitions>
@@ -24,17 +24,38 @@
             <Button Content="Upload CV (PDF)" Command="{Binding UploadCVCommand}" />
             <TextBlock Text="{Binding CvFileName}" FontSize="14" />
 
-            <TextBox Text="{Binding ExtraInfo, Mode=TwoWay}" PlaceholderText="Write about your interest or any other additional info..." Height="80" AcceptsReturn="True" />
-            <TextBox x:Name="InputTextBox" Text="{Binding Answer, Mode=TwoWay}" PlaceholderText="Write your answer here" Height="80" AcceptsReturn="True" />
-            
-            <Button Content="Start Interview" Command="{Binding StartInterviewCommand}" Background="Green" Foreground="White" />
-            <Button Content="Start Recording" Command="{Binding StartRecordCommand}" />
-            <Button Content="Stop Recording" Command="{Binding StopRecordCommand}"/>
-            <Button Content="Clear Chat" Command="{Binding ClearChatCommand}" />
+            <ComboBox Width="158" x:Name="QuestionLimit" 
+                        ItemsSource="{Binding ComboBoxOptions}" 
+                        SelectedItem="{Binding QuestionLimit, Mode=TwoWay}"  
+                        IsEditable="True" 
+                        IsSynchronizedWithCurrentItem="False" 
+                        PlaceholderText="Max Questions">
 
+                <ComboBox.ItemContainerStyle>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="BorderBrush" Value="AliceBlue"/>
+                        <Setter Property="BorderThickness" Value="1"/>
+                        <Setter Property="Padding" Value="5"/>
+                        <Setter Property="Margin" Value="2"/>
+                    </Style>
+                </ComboBox.ItemContainerStyle>
+
+            </ComboBox>
+
+            <TextBox Text="{Binding ExtraInfo, Mode=TwoWay}" 
+                     PlaceholderText="Write about your interest or any other additional info..." 
+                     Height="55" 
+                     AcceptsReturn="True" />
+            <TextBox x:Name="InputTextBox" Text="{Binding Answer, Mode=TwoWay}" PlaceholderText="Write your answer here" Height="86" AcceptsReturn="True" />
+            <Button Content="Start Interview" Command="{Binding StartInterviewCommand}" Background="Green" Foreground="White" Height="35" />
+            <Button Content="Start Recording" Command="{Binding StartRecordCommand}" Height="35" />
+            <Button Content="Stop Recording" Command="{Binding StopRecordCommand}" Height="35"/>
+            <Button Content="Clear Chat" Command="{Binding ClearChatCommand}" Height="35" />
             <Button Content="Generate Feedback Report"
                 Command="{Binding SaveFeedbackCommand}"
-                Background="Blue" Foreground="White"/>
+                Background="Blue" Foreground="White" Height="35"/>
+            <Button Content="Reset All" Command="{Binding ResetAllCommand}"/>
+            <ProgressRing Height="52" Width="64" IsActive="{Binding IsProgressRingActive, Mode=TwoWay}"/>
         </StackPanel>
 
         <StackPanel Grid.Column="1" Padding="20">
@@ -52,6 +73,7 @@
                 </ListBox>
             </ScrollViewer>
         </StackPanel>
+        <CheckBox Grid.Column="1" Content="Bangla" IsChecked="{Binding IsBangla, Mode=TwoWay}" Margin="850,10,0,0" VerticalAlignment="Top"/>
 
     </Grid>
 </Page>

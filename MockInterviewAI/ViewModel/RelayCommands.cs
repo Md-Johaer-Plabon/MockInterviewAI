@@ -4,12 +4,12 @@ using System.Windows.Input;
 
 namespace MockInterviewAI
 {
-    internal class RelayCommand : ICommand
+    internal class RelayCommands : ICommand
     {
         private readonly Func<Task> _execute;
         private readonly Func<bool> _canExecute;
 
-        public RelayCommand(Func<Task> execute, Func<bool> canExecute = null)
+        public RelayCommands(Func<Task> execute, Func<bool> canExecute = null)
         {
             _execute = execute;
             _canExecute = canExecute;
