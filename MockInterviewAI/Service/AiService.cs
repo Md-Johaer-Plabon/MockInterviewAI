@@ -16,7 +16,7 @@ namespace MockInterviewAI.Service
         private static readonly string ApiKey = "AIzaSyALAScAimaiBrHWCtCuQ1n-G7vXEW-xgLo";
         private static readonly string GeminiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + ApiKey;
         private static Dictionary<string, List<string>> keyValueStore = new Dictionary<string, List<string>>();
-        private static List<string> Questions = new List<string>();
+        private static List<string> Questions { set; get; } = new List<string>();
         private static bool isAudioList;
         private static List<string> AudQuestions;
         private static bool isQuestionText { get; set; } = false;
@@ -61,13 +61,13 @@ namespace MockInterviewAI.Service
             }
             catch (Exception ex)
             {
-                await new Windows.UI.Popups.MessageDialog($"Error in ExtractCvDetailsAsJsonFromPdf: {ex.Message}").ShowAsync();
+                await new Windows.UI.Popups.MessageDialog($"Check your internet connection. AI Response Error: {ex.Message}").ShowAsync();
             }
 
             return null;
         }
 
-        public static async Task<string> ReviewExam(string chatHistory)
+        public static async Task<string> ReviewExam(string chatHistory, string language)
         {
             try
             {
@@ -85,7 +85,8 @@ namespace MockInterviewAI.Service
                         $"where the candidate needs to improve, providing details about what " +
                         $"the candidate should have done better.\r\n    - For each area of " +
                         $"improvement, suggest specific actions the candidate could take to " +
-                        $"perform better in future interviews.\r\n\r\nChat History:\r\n\r\n" +
+                        $"perform better in future interviews." +
+                        $"\n\n Must generate the review in {language}.\r\n\r\nChat History:\r\n\r\n" +
                         $"{chatHistory}" +
                         $"Format:\r\n\r\n- " +
                         $"  Overall Performance Rating:   [out of 100]\r\n-   Better Results:" +
@@ -145,7 +146,9 @@ namespace MockInterviewAI.Service
                         "Then you have to maintain that the questions should assess the candidate’s technical skills, experience, technologies and additional info " +
                         "ability while also exploring their soft skills, career aspirations, and " +
                         "suitability for the role.  \r\n\r\nBelow is the extracted text from the " +
-                        "candidate's CV:  \r\n\r\n" + cvText + "\r\n\r\nNow, generate " + questionLimit + " interview " +
+                        "candidate's CV:  \r\n\r\n" + cvText + "\r\n\r\n" +
+
+                        "Now, Must generate exactly" + questionLimit + " interview " +
                         "questions that:  " +
 
                         "\r\n1. Evaluate the candidate's core skills and expertise in their field.  " +
@@ -182,6 +185,7 @@ namespace MockInterviewAI.Service
                         responseArray = responseArray.Replace("```json", "");
                         responseArray = responseArray.Replace("```", "");
                         isQuestionText = true;
+                        Questions.Clear();
                         ParseGeminiResponse(responseArray);
 
                         return Questions;

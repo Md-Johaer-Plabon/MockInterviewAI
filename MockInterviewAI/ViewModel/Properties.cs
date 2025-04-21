@@ -16,7 +16,7 @@ namespace MockInterviewAI.ViewModel
         private bool isUpdatedExtraInfo { get; set; } = false;
         private string review;
         private string answer;
-        private string _questionsLimit = "2";
+        private string _questionsLimit = "Max Questions";
         private bool _isBangla = false;
         public string PrefLanguage = "English";
         private bool _isProgressRingActive = false;

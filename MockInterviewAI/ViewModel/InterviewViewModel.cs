@@ -37,6 +37,7 @@ namespace MockInterviewAI.ViewModel
                     ChatHistory.Clear();
                     ChatHistory.Add("Upload Completed!");
 
+                    await Task.Delay(100);
                     await SaveData();
                 }
             }
@@ -50,8 +51,6 @@ namespace MockInterviewAI.ViewModel
         {
             try
             {
-                ChatHistory.Clear();
-                ChatHistory.Add("Loading...");
 
                 UserData data = new UserData();
                 foreach (string val in cvText.Keys)
@@ -103,7 +102,6 @@ namespace MockInterviewAI.ViewModel
             {
                 cvText.Clear();
                 cvText = null;
-                ChatHistory.Clear();
             }
         }
 
@@ -139,6 +137,7 @@ namespace MockInterviewAI.ViewModel
         {
             try
             {
+                ChatHistory.Clear();
                 if (waitingTaskCompletion != null && !waitingTaskCompletion.Task.IsCompleted)
                 {
                     ChatHistory.Add("⚠️ Illegal Move! Plese answer the question.");
@@ -172,8 +171,18 @@ namespace MockInterviewAI.ViewModel
                 ChatHistory.Clear();
                 ChatHistory.Add("🎤 Interview Starting...");
                 string info = await PrepareText();
+                string limit = "";
 
-                questions = await AiService.GenerateQuestions(info, QuestionLimit, PrefLanguage);
+                if(QuestionLimit == _questionsLimit)
+                {
+                    limit = "2";
+                }
+                else
+                {
+                    limit = QuestionLimit;
+                }
+
+                questions = await AiService.GenerateQuestions(info, limit, PrefLanguage);
 
                 int idx = 1;
 
@@ -296,7 +305,7 @@ namespace MockInterviewAI.ViewModel
 
                 string filePath = Path.Combine(ApplicationData.Current.LocalCacheFolder.Path, "History.txt");
                 File.WriteAllText(filePath, review);
-                string val = await AiService.ReviewExam(review);
+                string val = await AiService.ReviewExam(review, PrefLanguage);
 
                 filePath = Path.Combine(ApplicationData.Current.LocalCacheFolder.Path, "Review.html");
                 File.WriteAllText(filePath, val);
@@ -327,6 +336,8 @@ namespace MockInterviewAI.ViewModel
         {
             await ClearChat();
             await DbHelper.DeleteEntity();
+            QuestionLimit = _questionsLimit;
+            CvFileName = "";
             if (waitingTaskCompletion != null && !waitingTaskCompletion.Task.IsCompleted)
             {
                 _forceEnd = true;

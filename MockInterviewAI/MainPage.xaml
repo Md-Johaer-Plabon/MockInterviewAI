@@ -19,7 +19,7 @@
             <ColumnDefinition Width="3*" />
         </Grid.ColumnDefinitions>
 
-        <StackPanel Grid.Column="0" Padding="20" Spacing="20">
+        <StackPanel Grid.Column="0" Padding="20" Spacing="10">
             <TextBlock Text="AI Interview Chatbot" FontSize="22" FontWeight="Bold" />
             <Button Content="Upload CV (PDF)" Command="{Binding UploadCVCommand}" />
             <TextBlock Text="{Binding CvFileName}" FontSize="14" />
@@ -73,7 +73,7 @@
                 </ListBox>
             </ScrollViewer>
         </StackPanel>
-        <CheckBox Grid.Column="1" Content="Bangla" IsChecked="{Binding IsBangla, Mode=TwoWay}" Margin="850,10,0,0" VerticalAlignment="Top"/>
+        <CheckBox Grid.Column="1" Content="Bangla" IsChecked="{Binding IsBangla, Mode=TwoWay}" Margin="670,10,0,0" VerticalAlignment="Top"/>
 
     </Grid>
 </Page>
