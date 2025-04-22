@@ -12,5 +12,6 @@ namespace MockInterviewAI.Model
         public string Technologies { get; set; }
         public string Experience { get; set; }
         public string AdditionalInfo { get; set; }
+        public string Others { get; set; }
     }
 }

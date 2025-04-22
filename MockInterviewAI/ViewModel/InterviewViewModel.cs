@@ -16,7 +16,9 @@ namespace MockInterviewAI.ViewModel
     public partial class InterviewViewModel : INotifyPropertyChanged
     {
         private List<string> questions;
-        private bool _forceEnd = false;
+        private bool _forceEnd { get; set; } = false;
+        private bool _isCvTextReady = false;
+        private bool _isCvUploadOngoing = false;
 
         public async Task UploadCV()
         {
@@ -31,13 +33,18 @@ namespace MockInterviewAI.ViewModel
                     cvFilePath = file.Path;
                     CvFileName = file.Name;
                     ChatHistory.Add("Uploading...");
+                    _isCvUploadOngoing = true;
 
                     cvText = await AiService.ExtractCvDetailsAsJsonFromPdf(file);
 
-                    ChatHistory.Clear();
+                    if (cvText != null && cvText.Count > 0)
+                    {
+                        _isCvTextReady = true;
+                    }
+
+                    ChatHistory?.Clear();
                     ChatHistory.Add("Upload Completed!");
 
-                    await Task.Delay(100);
                     await SaveData();
                 }
             }
@@ -45,13 +52,16 @@ namespace MockInterviewAI.ViewModel
             {
                 Debug.WriteLine("Error in Uploading CV: " + ex.Message);
             }
+            finally
+            {
+                _isCvUploadOngoing = false;
+            }
         }
 
         private async Task SaveData()
         {
             try
             {
-
                 UserData data = new UserData();
                 foreach (string val in cvText.Keys)
                 {
@@ -84,6 +94,10 @@ namespace MockInterviewAI.ViewModel
                     {
                         data.Experience = listVal;
                     }
+                    else
+                    {
+                        data.Others = listVal;
+                    }
                 }
 
                 if (!string.IsNullOrEmpty(ExtraInfo) && isUpdatedExtraInfo)
@@ -100,8 +114,7 @@ namespace MockInterviewAI.ViewModel
             }
             finally
             {
-                cvText.Clear();
-                cvText = null;
+                cvText?.Clear();
             }
         }
 
@@ -124,6 +137,7 @@ namespace MockInterviewAI.ViewModel
                 text += Make("Projects:\n", data.Projects);
                 text += Make("Experiences:\n", data.Experience);
                 text += Make("Additional Info:\n", data.AdditionalInfo);
+                text += Make("Others Info:\n", data.Others);
             }
             catch (Exception ex)
             {
@@ -137,6 +151,13 @@ namespace MockInterviewAI.ViewModel
         {
             try
             {
+                if (_isCvUploadOngoing && !_isCvTextReady)
+                {
+                    ChatHistory.Add("⚠️ CV is not uploaded yet! Please wait...");
+                    return;
+                }
+
+
                 ChatHistory.Clear();
                 if (waitingTaskCompletion != null && !waitingTaskCompletion.Task.IsCompleted)
                 {
@@ -173,7 +194,7 @@ namespace MockInterviewAI.ViewModel
                 string info = await PrepareText();
                 string limit = "";
 
-                if(QuestionLimit == _questionsLimit)
+                if(QuestionLimit == "Max Questions")
                 {
                     limit = "2";
                 }
@@ -182,26 +203,32 @@ namespace MockInterviewAI.ViewModel
                     limit = QuestionLimit;
                 }
 
-                questions = await AiService.GenerateQuestions(info, limit, PrefLanguage);
+                questions = await AiService.GenerateQuestions(info, limit, PrefLang);
+                ChatHistory.Clear();
 
                 int idx = 1;
 
                 foreach (var question in questions)
                 {
-                    ChatHistory.RemoveAt(ChatHistory.Count - 1);
+                    if (ChatHistory?.Count - 1 >= 0)
+                    {
+                        ChatHistory.RemoveAt(ChatHistory.Count - 1);
+                    }
+
                     ChatHistory.Add("🤖 Bot: " + question);
-                    review += "Question " + idx++ + ": " + question + "\n";
+                    review += "Question " + idx++ + ": " + question + "\n\n";
 
                     string userInput = await WaitForUserInput();
                     
                     if (_forceEnd)
                     {
+                        _forceEnd = false;
                         break;
                     }
 
                     ChatHistory.Add("🧑‍💼 You: " + voiceAns);
                     review += $"Answer: { voiceAns}";
-                    review += "\n";
+                    review += "\n\n";
                     await Task.Delay(300);
                     ChatHistory.Add("Loading...");
                     await Task.Delay(1000);
@@ -305,7 +332,7 @@ namespace MockInterviewAI.ViewModel
 
                 string filePath = Path.Combine(ApplicationData.Current.LocalCacheFolder.Path, "History.txt");
                 File.WriteAllText(filePath, review);
-                string val = await AiService.ReviewExam(review, PrefLanguage);
+                string val = await AiService.ReviewExam(review, PrefLang);
 
                 filePath = Path.Combine(ApplicationData.Current.LocalCacheFolder.Path, "Review.html");
                 File.WriteAllText(filePath, val);
@@ -336,8 +363,14 @@ namespace MockInterviewAI.ViewModel
         {
             await ClearChat();
             await DbHelper.DeleteEntity();
-            QuestionLimit = _questionsLimit;
+            QuestionLimit = "Max Questions";
             CvFileName = "";
+            ExtraInfo = "";
+            review = "";
+            _isCvTextReady = false;
+
+            AiService.ClearAiServiceProps();
+
             if (waitingTaskCompletion != null && !waitingTaskCompletion.Task.IsCompleted)
             {
                 _forceEnd = true;

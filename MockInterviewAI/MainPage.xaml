@@ -31,14 +31,13 @@
                         IsSynchronizedWithCurrentItem="False" 
                         PlaceholderText="Max Questions">
 
-                <ComboBox.ItemContainerStyle>
-                    <Style TargetType="ComboBoxItem">
-                        <Setter Property="BorderBrush" Value="AliceBlue"/>
-                        <Setter Property="BorderThickness" Value="1"/>
-                        <Setter Property="Padding" Value="5"/>
-                        <Setter Property="Margin" Value="2"/>
-                    </Style>
-                </ComboBox.ItemContainerStyle>
+            </ComboBox>
+            <ComboBox Width="158" x:Name="Preferred_Language" 
+                ItemsSource="{Binding LanguageOption}" 
+                SelectedItem="{Binding PrefLang, Mode=TwoWay}"  
+                IsEditable="True" 
+                IsSynchronizedWithCurrentItem="False" 
+                PlaceholderText="Language">
 
             </ComboBox>
 
@@ -46,7 +45,6 @@
                      PlaceholderText="Write about your interest or any other additional info..." 
                      Height="55" 
                      AcceptsReturn="True" />
-            <TextBox x:Name="InputTextBox" Text="{Binding Answer, Mode=TwoWay}" PlaceholderText="Write your answer here" Height="86" AcceptsReturn="True" />
             <Button Content="Start Interview" Command="{Binding StartInterviewCommand}" Background="Green" Foreground="White" Height="35" />
             <Button Content="Start Recording" Command="{Binding StartRecordCommand}" Height="35" />
             <Button Content="Stop Recording" Command="{Binding StopRecordCommand}" Height="35"/>
@@ -73,7 +71,6 @@
                 </ListBox>
             </ScrollViewer>
         </StackPanel>
-        <CheckBox Grid.Column="1" Content="Bangla" IsChecked="{Binding IsBangla, Mode=TwoWay}" Margin="670,10,0,0" VerticalAlignment="Top"/>
 
     </Grid>
 </Page>

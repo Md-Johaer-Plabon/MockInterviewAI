@@ -17,8 +17,7 @@ namespace MockInterviewAI.ViewModel
         private string review;
         private string answer;
         private string _questionsLimit = "Max Questions";
-        private bool _isBangla = false;
-        public string PrefLanguage = "English";
+        private string PrefLanguage { get; set; } = "English";
         private bool _isProgressRingActive = false;
 
         public string Answer
@@ -35,7 +34,10 @@ namespace MockInterviewAI.ViewModel
         {
             "1", "2", "3", "4", "5"
         };
-
+        public ObservableCollection<string> LanguageOption { get; set; } = new ObservableCollection<string>
+        {
+            "English", "Bangla", "Spanish", "Arabic", "Korean"
+        };
 
         public string CvFileName
         {
@@ -54,29 +56,6 @@ namespace MockInterviewAI.ViewModel
             }
         }
 
-        public bool IsBangla
-        {
-            get => _isBangla;
-            set
-            {
-                if (_isBangla != value)
-                {
-                    _isBangla = value;
-
-                    if (_isBangla)
-                    {
-                        PrefLanguage = "Bangla";
-                    }
-                    else
-                    {
-                        PrefLanguage = "English";
-                    }
-
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(_isBangla)));
-                }
-            }
-        }
-
         public string QuestionLimit
         {
             get => _questionsLimit;
@@ -89,6 +68,20 @@ namespace MockInterviewAI.ViewModel
                 }
             }
         }
+
+        public string PrefLang
+        {
+            get => PrefLanguage;
+            set
+            {
+                if (PrefLanguage != value)
+                {
+                    PrefLanguage = value;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PrefLanguage)));
+                }
+            }
+        }
+
 
         public bool IsProgressRingActive
         {

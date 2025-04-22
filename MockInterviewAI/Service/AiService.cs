@@ -37,6 +37,7 @@ namespace MockInterviewAI.Service
                                    "  \"Projects\": [{ \"Title\": \"Project Name\", \"Description\": \"Project details\" }],\n" +
                                    "  \"Technologies\": [\"Technology1\", \"Technology2\"],\n" +
                                    "  \"Experience\": [{ \"Project\": \"Project Name\", \"Role\": \"Job Role\", \"Platforms\": \"Platform Name\", \"Language\": \"Languages 1, Languages 2...\", \"Specific project works\": \"Responsibilities in Project and the specific project works in 2 lines maximum in 20 words\"}]\n" +
+                                   "  \"Others\": [\"Other topics1 which were not included in previous....\", \"Other topics2 which were not included in previous....\"],\n" +
                                    "}";
 
                     string requestPayload = GetRequestBody(text, pdfBase64, "application/pdf");
@@ -121,7 +122,7 @@ namespace MockInterviewAI.Service
                         responseArray = responseArray.Replace("```json", "");
                         responseArray = responseArray.Replace("```", "");
 
-                        keyValueStore.Clear();
+                        keyValueStore?.Clear();
                         isQuestionText = false;
                         return responseArray;
                     }
@@ -143,7 +144,7 @@ namespace MockInterviewAI.Service
                 {
                     string text = "Your task is to generate personalized and insightful interview " +
                         "questions in " + language + " based on the provided CV text. First ask him atleast a basic question about any concept, tools or anything alinged with his expertise area.\n" +
-                        "Then you have to maintain that the questions should assess the candidate’s technical skills, experience, technologies and additional info " +
+                        "Then you have to maintain that the questions should assess the candidate’s technical skills, experience, technologies, additional info and Other info" +
                         "ability while also exploring their soft skills, career aspirations, and " +
                         "suitability for the role.  \r\n\r\nBelow is the extracted text from the " +
                         "candidate's CV:  \r\n\r\n" + cvText + "\r\n\r\n" +
@@ -185,7 +186,7 @@ namespace MockInterviewAI.Service
                         responseArray = responseArray.Replace("```json", "");
                         responseArray = responseArray.Replace("```", "");
                         isQuestionText = true;
-                        Questions.Clear();
+                        Questions?.Clear();
                         ParseGeminiResponse(responseArray);
 
                         return Questions;
@@ -351,6 +352,15 @@ namespace MockInterviewAI.Service
             }
 
             return null;
+        }
+
+        public static void ClearAiServiceProps()
+        {
+            keyValueStore = new Dictionary<string, List<string>>();
+            Questions = new List<string>();
+            isAudioList = false;
+            AudQuestions?.Clear();
+            isQuestionText = false;
         }
     }
 }
