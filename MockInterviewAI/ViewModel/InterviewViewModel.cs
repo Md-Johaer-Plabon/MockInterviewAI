@@ -15,7 +15,7 @@ namespace MockInterviewAI.ViewModel
 {
     public partial class InterviewViewModel : INotifyPropertyChanged
     {
-        private List<string> questions;
+        private List<string> questions { get; set; }
         private bool _forceEnd { get; set; } = false;
         private bool _isCvTextReady = false;
         private bool _isCvUploadOngoing = false;
@@ -131,13 +131,14 @@ namespace MockInterviewAI.ViewModel
                 UserData data = new UserData();
                 data = await DbHelper.GetUserData();
 
-                text += Make("About:\n", data.About);
-                text += Make("Skills:\n", data.Skills);
-                text += Make("Technologies:\n", data.Technologies);
-                text += Make("Projects:\n", data.Projects);
-                text += Make("Experiences:\n", data.Experience);
-                text += Make("Additional Info:\n", data.AdditionalInfo);
-                text += Make("Others Info:\n", data.Others);
+                text += Make("About: ", data.About);
+                text += Make("\nSkills: ", data.Skills);
+                text += Make("\nTechnologies: ", data.Technologies);
+                text += Make("\nProjects: ", data.Projects);
+                text += Make("\nExperiences: ", data.Experience);
+                text += Make("\nAdditional Info: ", data.AdditionalInfo);
+                text += Make("\nOthers Info: ", data.Others);
+                text += "\n";
             }
             catch (Exception ex)
             {
@@ -156,7 +157,6 @@ namespace MockInterviewAI.ViewModel
                     ChatHistory.Add("⚠️ CV is not uploaded yet! Please wait...");
                     return;
                 }
-
 
                 ChatHistory.Clear();
                 if (waitingTaskCompletion != null && !waitingTaskCompletion.Task.IsCompleted)
@@ -208,14 +208,20 @@ namespace MockInterviewAI.ViewModel
 
                 int idx = 1;
 
+                if (questions?.Count == 0)
+                {
+                    ChatHistory?.Clear();
+                    ChatHistory?.Add("🙁 No question found!");
+                }
+
                 foreach (var question in questions)
                 {
                     if (ChatHistory?.Count - 1 >= 0)
                     {
-                        ChatHistory.RemoveAt(ChatHistory.Count - 1);
+                        ChatHistory?.RemoveAt(ChatHistory.Count - 1);
                     }
 
-                    ChatHistory.Add("🤖 Bot: " + question);
+                    ChatHistory?.Add("🤖 Bot: " + question);
                     review += "Question " + idx++ + ": " + question + "\n\n";
 
                     string userInput = await WaitForUserInput();
@@ -243,14 +249,14 @@ namespace MockInterviewAI.ViewModel
                 await new Windows.UI.Popups.MessageDialog($"Error in StartInterview: {ex.Message}").ShowAsync();
             }
 
-            questions.Clear();
+            questions?.Clear();
         }
 
         public async Task StartRecording()
         {
             try
             {
-                if (questions == null || questions.Count == 0)
+                if (questions == null || questions?.Count == 0)
                 {
                     ChatHistory.Add("⚠️ Please confirm the interview has been started properly.");
                     return;

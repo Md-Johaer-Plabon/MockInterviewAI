@@ -9,8 +9,8 @@
 
   <Identity
     Name="33169cb5-06ea-4e29-a507-f21da22e5fd7"
-    Publisher="CN=LENOVO"
-    Version="1.0.0.0" />
+    Publisher="CN=plabon.j"
+    Version="1.0.1.0" />
 
   <mp:PhoneIdentity PhoneProductId="33169cb5-06ea-4e29-a507-f21da22e5fd7" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 

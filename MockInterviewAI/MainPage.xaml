@@ -24,7 +24,7 @@
             <Button Content="Upload CV (PDF)" Command="{Binding UploadCVCommand}" />
             <TextBlock Text="{Binding CvFileName}" FontSize="14" />
 
-            <ComboBox Width="158" x:Name="QuestionLimit" 
+            <ComboBox Width="158" x:Name="QuestionLimit" Margin="0,15,0,0"
                         ItemsSource="{Binding ComboBoxOptions}" 
                         SelectedItem="{Binding QuestionLimit, Mode=TwoWay}"  
                         IsEditable="True" 
@@ -43,9 +43,9 @@
 
             <TextBox Text="{Binding ExtraInfo, Mode=TwoWay}" 
                      PlaceholderText="Write about your interest or any other additional info..." 
-                     Height="55" 
+                     Height="100" 
                      AcceptsReturn="True" />
-            <Button Content="Start Interview" Command="{Binding StartInterviewCommand}" Background="Green" Foreground="White" Height="35" />
+            <Button Content="Start Interview" Command="{Binding StartInterviewCommand}" Background="Green" Foreground="White" Height="35" Margin="0,20,0,0" />
             <Button Content="Start Recording" Command="{Binding StartRecordCommand}" Height="35" />
             <Button Content="Stop Recording" Command="{Binding StopRecordCommand}" Height="35"/>
             <Button Content="Clear Chat" Command="{Binding ClearChatCommand}" Height="35" />
@@ -59,7 +59,7 @@
         <StackPanel Grid.Column="1" Padding="20">
             <TextBlock Text="Chat History" FontSize="20" FontWeight="Bold" />
 
-            <ScrollViewer Height="580">
+            <ScrollViewer Height="580" Margin="0,15,0,0">
                 <ListBox ItemsSource="{Binding ChatHistory}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -71,6 +71,5 @@
                 </ListBox>
             </ScrollViewer>
         </StackPanel>
-
     </Grid>
 </Page>
