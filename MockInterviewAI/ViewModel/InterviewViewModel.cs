@@ -139,7 +139,13 @@ namespace MockInterviewAI.ViewModel
         {
             try
             {
-                UserData data = new UserData();
+                UserData data = await DbHelper.GetUserData();
+
+                if (data == null)
+                {
+                    data = new UserData();
+                }
+
                 foreach (string val in cvText.Keys)
                 {
                     List<string> list = cvText[val];
