@@ -1,4 +1,5 @@
-﻿using MockInterviewAI.Data;
+﻿using Microsoft.Extensions.Logging.Abstractions;
+using MockInterviewAI.Data;
 using MockInterviewAI.Model;
 using MockInterviewAI.Service;
 using MockInterviewAI.Utils;
@@ -7,9 +8,15 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
+using Windows.Data.Pdf;
+using Windows.Graphics.Imaging;
+using Windows.Media.SpeechSynthesis;
 using Windows.Storage;
 using Windows.Storage.Pickers;
+using Windows.Storage.Streams;
+using Windows.UI.Xaml.Controls;
 
 namespace MockInterviewAI.ViewModel
 {
@@ -19,6 +26,65 @@ namespace MockInterviewAI.ViewModel
         private bool _forceEnd { get; set; } = false;
         private bool _isCvTextReady = false;
         private bool _isCvUploadOngoing = false;
+        private List<string> pages = new List<string>();
+        private Dictionary<string, string> LanguageCode = new Dictionary<string, string>
+        {
+            { "English", "en-US" },
+            { "Bangla", "bn-BD" }
+        };
+
+
+        private async Task SavePdfAsImages(StorageFile pdfFile)
+        {
+            try
+            {
+                PdfDocument pdfDocument = await PdfDocument.LoadFromFileAsync(pdfFile);
+
+                for (uint i = 0; i < pdfDocument.PageCount; i++)
+                {
+                    using (PdfPage page = pdfDocument.GetPage(i))
+                    {
+                        var stream = new InMemoryRandomAccessStream();
+                        await page.RenderToStreamAsync(stream);
+
+                        BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
+                        SoftwareBitmap softwareBitmap = await decoder.GetSoftwareBitmapAsync();
+
+                        StorageFolder localFolder = ApplicationData.Current.LocalFolder;
+                        StorageFile outputFile = await localFolder.CreateFileAsync($"Page_{i + 1}.png", CreationCollisionOption.ReplaceExisting);
+
+                        using (IRandomAccessStream outputStream = await outputFile.OpenAsync(FileAccessMode.ReadWrite))
+                        {
+                            BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, outputStream);
+                            encoder.SetSoftwareBitmap(softwareBitmap);
+                            await encoder.FlushAsync();
+                        }
+
+                        string img = await ConvertImageToBase64(outputFile);
+                        pages.Add(img);
+
+                        await outputFile.DeleteAsync();
+                    }
+                }
+                }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
+        }
+
+        private async Task<string> ConvertImageToBase64(StorageFile file)
+        {
+            using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.Read))
+            {
+                using (MemoryStream memoryStream = new MemoryStream())
+                {
+                    await stream.AsStreamForRead().CopyToAsync(memoryStream);
+                    byte[] bytes = memoryStream.ToArray();
+                    return Convert.ToBase64String(bytes);
+                }
+            }
+        }
 
         public async Task UploadCV()
         {
@@ -28,6 +94,11 @@ namespace MockInterviewAI.ViewModel
                 picker.FileTypeFilter.Add(".pdf");
                 StorageFile file = await picker.PickSingleFileAsync();
 
+
+                await SavePdfAsImages(file);
+
+
+
                 if (file != null)
                 {
                     cvFilePath = file.Path;
@@ -35,17 +106,23 @@ namespace MockInterviewAI.ViewModel
                     ChatHistory.Add("Uploading...");
                     _isCvUploadOngoing = true;
 
-                    cvText = await AiService.ExtractCvDetailsAsJsonFromPdf(file);
 
-                    if (cvText != null && cvText.Count > 0)
+                    foreach (var img in pages)
                     {
-                        _isCvTextReady = true;
+                        cvText = await AiService.ExtractCvDetailsAsJsonFromPdf(img);
+
+                        if (cvText != null && cvText.Count > 0)
+                        {
+                            _isCvTextReady = true;
+                        }
+
+                        ChatHistory?.Clear();
+                        ChatHistory.Add("Upload Completed!");
+
+                        await SaveData();
                     }
 
-                    ChatHistory?.Clear();
-                    ChatHistory.Add("Upload Completed!");
-
-                    await SaveData();
+                    
                 }
             }
             catch (Exception ex)
@@ -74,29 +151,49 @@ namespace MockInterviewAI.ViewModel
                         listVal += lst;
                     }
 
-                    if (val == "About")
+                    if (val == "full_name" && listVal != "Not Mentioned")
                     {
-                        data.About = listVal;
+                        data.FullName = listVal;
                     }
-                    else if (val == "Skills")
+                    else if (val == "email" && listVal != "Not Mentioned")
+                    {
+                        data.Email = listVal;
+                    }
+                    else if (val == "professional_summary" && listVal != "Not Mentioned")
+                    {
+                        data.Professional_summary = listVal;
+                    }
+                    else if (val == "education" && listVal != "Not Mentioned")
+                    {
+                        data.Education = listVal;
+                    }
+                    else if (val == "skills" && listVal != "Not Mentioned")
                     {
                         data.Skills = listVal;
                     }
-                    else if (val == "Projects")
+                    else if (val == "projects" && listVal != "Not Mentioned")
                     {
                         data.Projects = listVal;
                     }
-                    else if (val == "Technologies")
+                    else if (val == "tools_technologies" && listVal != "Not Mentioned")
                     {
                         data.Technologies = listVal;
                     }
-                    else if (val == "Experience")
+                    else if (val == "work_experience" && listVal != "Not Mentioned")
                     {
                         data.Experience = listVal;
                     }
-                    else
+                    else if (val == "certifications" && listVal != "Not Mentioned")
                     {
-                        data.Others = listVal;
+                        data.Certifications = listVal;
+                    }
+                    else if (val == "interests" && listVal != "Not Mentioned")
+                    {
+                        data.Interests = listVal;
+                    }
+                    else if (val == "extracurricular" && listVal != "Not Mentioned")
+                    {
+                        data.Extracurricular = listVal;
                     }
                 }
 
@@ -131,13 +228,16 @@ namespace MockInterviewAI.ViewModel
                 UserData data = new UserData();
                 data = await DbHelper.GetUserData();
 
-                text += Make("About: ", data.About);
+                text += Make("Name: ", data.FullName);
+                text += Make("Professional_summary: ", data.Professional_summary);
                 text += Make("\nSkills: ", data.Skills);
                 text += Make("\nTechnologies: ", data.Technologies);
                 text += Make("\nProjects: ", data.Projects);
                 text += Make("\nExperiences: ", data.Experience);
                 text += Make("\nAdditional Info: ", data.AdditionalInfo);
-                text += Make("\nOthers Info: ", data.Others);
+                text += Make("\nInterests: ", data.AdditionalInfo);
+                text += Make("\nCertifications: ", data.Certifications);
+                text += Make("\nExtra curricular activities: ", data.Extracurricular);
                 text += "\n";
             }
             catch (Exception ex)
@@ -222,6 +322,7 @@ namespace MockInterviewAI.ViewModel
                     }
 
                     ChatHistory?.Add("🤖 Bot: " + question);
+                    await SpeakText(question, LanguageCode[PrefLang]);
                     review += "Question " + idx++ + ": " + question + "\n\n";
 
                     string userInput = await WaitForUserInput();
@@ -250,6 +351,25 @@ namespace MockInterviewAI.ViewModel
             }
 
             questions?.Clear();
+        }
+
+        private async Task SpeakText(string text, string languageCode)
+        {
+            using (var synthesizer = new SpeechSynthesizer())
+            {
+                var voices = SpeechSynthesizer.AllVoices;
+                var voice = voices.FirstOrDefault(v => v.Language == languageCode);
+                if (voice != null)
+                {
+                    synthesizer.Voice = voice;
+                }
+
+                SpeechSynthesisStream stream = await synthesizer.SynthesizeTextToStreamAsync(text);
+
+                MediaElement mediaElement = new MediaElement();
+                mediaElement.SetSource(stream, stream.ContentType);
+                mediaElement.Play();
+            }
         }
 
         public async Task StartRecording()
@@ -362,12 +482,12 @@ namespace MockInterviewAI.ViewModel
         {
             ChatHistory.Clear();
             review = "";
-            await Task.Delay(10);
         }
 
         private async Task ResetAll()
         {
             await ClearChat();
+            ChatHistory.Add("📄 Everything has been reset!");
             await DbHelper.DeleteEntity();
             QuestionLimit = "Max Questions";
             CvFileName = "";

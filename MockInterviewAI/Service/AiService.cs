@@ -21,26 +21,31 @@ namespace MockInterviewAI.Service
         private static List<string> AudQuestions;
         private static bool isQuestionText { get; set; } = false;
 
-        public static async Task<Dictionary<string, List<string>>> ExtractCvDetailsAsJsonFromPdf(StorageFile file)
+        public static async Task<Dictionary<string, List<string>>> ExtractCvDetailsAsJsonFromPdf(string file)
         {
             try
             {
-                string pdfBase64 = await PdfParser.ConvertPdfToBase64(file);
+                //string pdfBase64 = await PdfParser.ConvertPdfToBase64(file);
 
+                keyValueStore?.Clear();
                 using (HttpClient client = new HttpClient())
                 {
-                    string text = $"Extract key details from the following PDF content and return as JSON:\n\n" +
-                                   "Format the response as JSON with the following fields:\n" +
-                                   "{\n" +
-                                   "  \"About\": \"Short summary about the candidate\",\n" +
-                                   "  \"Skills\": [\"Skill1\", \"Skill2\", \"Skill3\"],\n" +
-                                   "  \"Projects\": [{ \"Title\": \"Project Name\", \"Description\": \"Project details\" }],\n" +
-                                   "  \"Technologies\": [\"Technology1\", \"Technology2\"],\n" +
-                                   "  \"Experience\": [{ \"Project\": \"Project Name\", \"Role\": \"Job Role\", \"Platforms\": \"Platform Name\", \"Language\": \"Languages 1, Languages 2...\", \"Specific project works\": \"Responsibilities in Project and the specific project works in 2 lines maximum in 20 words\"}]\n" +
-                                   "  \"Others\": [\"Other topics1 which were not included in previous....\", \"Other topics2 which were not included in previous....\"],\n" +
-                                   "}";
+                    string text = "You are a smart AI assistant designed to extract structured information from a resume or CV. Your goal is to process resumes from any profession " +
+                                  "or industry (e.g., software engineering, teaching, marketing, medicine, law, etc.) and extract all possible relevant details to be stored in a " +
+                                  "database.\r\n\r\nYou must handle various formats (chronological, skill-based, mixed) and ensure no relevant information is missed. If any section " +
+                                  "is not available, use \"Not Mentioned\" as the value.\r\n\r\nReturn the extracted information in the following JSON format:\n\n" +
 
-                    string requestPayload = GetRequestBody(text, pdfBase64, "application/pdf");
+                                  "{\r\n  \"full_name\": \"John Doe\",\r\n  \"email\": \"john.doe@example.com\",\r\n  \"phone\": \"+1234567890\",\r\n  \"linkedin\": " +
+                                  "\"https://linkedin.com/in/johndoe\",\r\n  \"portfolio\": \"https://johndoe.dev\",\r\n  \"professional_summary\": \"Experienced software " +
+                                  "engineer with 5+ years in backend development.\",\r\n  \"skills\": \"C# (Advanced), ASP.NET Core (Advanced), JavaScript (Intermediate), " +
+                                  "SQL (Advanced)\",\r\n  \"education\": \"B.Sc. in Computer Science, XYZ University, 2018, CGPA: 3.75\",\r\n  \"certifications\": \"Microsoft" +
+                                  " Certified: Azure Developer Associate (2022-06)\",\r\n  \"work_experience\": \"Software Engineer at Tech Solutions Ltd. (2019-2023): Developed" +
+                                  " APIs, migrated to Azure, mentored devs.\",\r\n  \"projects\": \"Inventory Management System: Built using ASP.NET Core and SQL Server. Reduced" +
+                                  " stock errors by 70%.\",\r\n  \"languages\": \"English (Fluent), Spanish (Basic)\",\r\n  \"awards\": \"Employee of the Year - 2022\",\r\n  " +
+                                  "\"extracurricular\": \"Organized internal hackathons and tech talks\",\r\n  \"tools_technologies\": \"Visual Studio, Azure DevOps, Git, Postman\"," +
+                                  "\r\n  \"interests\": \"Cloud computing, Microservices, System design\"\r\n}\r\n";
+
+                    string requestPayload = GetRequestBody(text, file, "image/png");
 
                     HttpContent content = new StringContent(requestPayload, Encoding.UTF8, "application/json");
 
@@ -64,7 +69,9 @@ namespace MockInterviewAI.Service
             {
                 await new Windows.UI.Popups.MessageDialog($"Check your internet connection. AI Response Error: {ex.Message}").ShowAsync();
             }
-
+            finally
+            {
+            }
             return null;
         }
 
@@ -142,34 +149,33 @@ namespace MockInterviewAI.Service
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    string text = "Your task is to generate personalized and insightful interview " +
-                        "questions in " + language + " based on the provided CV text. First ask him atleast a basic question about any concept, tools or anything alinged with his expertise area.\n" +
-                        "Then you have to maintain that the questions should assess the candidate’s technical skills, experience, technologies, additional info and Other info" +
-                        "ability while also exploring their soft skills, career aspirations, and " +
-                        "suitability for the role.  \r\n\r\nBelow is the extracted text from the " +
-                        "candidate's CV:  \r\n\r\n" + cvText + "\r\n\r\n" +
+                    string text = "You are a professional interview assistant AI. Your task is to generate a set of realistic, challenging, and profession-specific interview " +
+                        "questions for a candidate based on the structured CV information provided below.\r\n\r\nThese questions should closely resemble those asked in actual " +
+                        "interviews for the candidate’s profession, job roles, technologies, and domain expertise." +  
+                        $"You have to must generate the questions in {language}\n"+
 
-                        "Now, Must generate exactly" + questionLimit + " interview " +
-                        "questions that:  " +
+                        "\r\n\r\nGuidelines for generating questions:\n" +
+                        "\r\n\r\n1. Include a mix of technical, situational, and behavioral questions." +
+                        "\r\n\r\n2. Make sure the questions are aligned with the candidate’s experience level (fresh graduate,mid-level, senior, etc.)." +
+                        "\r\n\r\n3. Use the candidate’s past projects, tools, skills, and work experience to generate tailored questions." +
+                        "\r\n\r\n4. Avoid generic or irrelevant questions; be focused and specific." +
+                        "\r\n\r\n5. Include at least one Basic question in starting of the interview about the specific expertise tool or stack.  " +
+                        "\r\n\r\n Here is the information of the CV:\n" + cvText + "\r\n\r\n" +
 
-                        "\r\n1. Evaluate the candidate's core skills and expertise in their field.  " +
-                        "\r\n2. Assess their experience with specific projects, technologies, or tools mentioned.  " +
-                        "\r\n3. Challenge their problem-solving and critical thinking abilities if he had problem-solving skills.  " +
-                        "\r\n4. Explore their soft skills, teamwork, and leadership experience.  " +
-                        "\r\n5. Include at least one situational or behavioral question related to their past work.  " +
-                        "\r\n6. Include at least one Basic question from additional info about the specific expertise tool or stack.  " +
+                        "Sometimes you may call him/her with his/her real name so taht he can feel the interview as much realistic.\n\n " +
 
-                        "\r\n\r\nEnsure the questions are professional, relevant, and " +
-                        "varied in complexity. Avoid generic questions and make them specific to " +
-                        "the candidate’s background. " +
+                        "Now, Must generate exactly" + questionLimit + " interview questions." +
+
+                        "\r\n\r\nEnsure the questions are professional, relevant, and varied in complexity. Avoid generic questions and make them specific to " +
+                        "the candidate’s background.\n" +
 
                         "Format the response as a numbered list.\r\n\r\n" +
                         "Return a Json string on questions where key name will be 'Questions'.\r\n\r\n" +
                         "Json string example:" +
 
                         "\r\n{\r\n  \"questions\": [\r\n    {\r\n      \"question\": \"What is the .Net Framework? " +
-                        "\"\r\n    },\r\n    {\r\n      \"question\": \"What are the main functionalities of .Net FrameWork?\"\r\n    " +
-                        "}\r\n {\r\n      \"question\": \"How do you optimize database performance when working with MS SQL in high-traffic applications?\"\r\\n    \" ]\r\n}\r\n\r\n";
+                        "\"\r\n    },\r\n    {\r\n      \"question\": \"Describe a situation where you had to refactor legacy code under a tight deadline.\"\r\n    " +
+                        "}\r\n {\r\n      \"question\": \"Can you explain how you handled API versioning in your recent ASP.NET Core project?\"\r\\n    \" ]\r\n}\r\n\r\n";
 
                     string requestPayload = GetRequestBody(text, string.Empty, "");
 
